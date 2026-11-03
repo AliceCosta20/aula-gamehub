@@ -19,6 +19,7 @@
     "url": "https://github.com/AliceCosta20/aula-gamehub/issues"
   },
   "homepage": "https://github.com/AliceCosta20/aula-gamehub#readme",
+
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",

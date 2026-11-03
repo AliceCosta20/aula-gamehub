@@ -7,6 +7,10 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import conexao from "./db.js";
+import { textoValido, inteiroPositivo } from "./src/utils/validacoes.js";
+import {validarId} from "./src/middlewares/validarId.js";
+import {tratarErro} from "./src/middlewares/tratarErro.js" 
+
 
 const app = express();
 const PORTA = Number(process.env.PORTA || 3000);
@@ -17,60 +21,7 @@ app.get("/", (req, res) => {
     res.status(200).json({ mensagem: "API do GameHub funcionando" });
 });
 
-function textoValido(valor, limite) {
-    return typeof valor === "string"
-        && valor.trim().length > 0
-        && valor.trim().length <= limite;
-}
 
-function inteiroPositivo(valor) {
-    return typeof valor === "number"
-        && Number.isSafeInteger(valor)
-        && valor > 0;
-}
-
-function validarId(req, res, next) {
-    const id = Number(req.params.id);
-
-    if (!/^\d+$/.test(req.params.id) || !Number.isSafeInteger(id) || id <= 0) {
-        return res.status(400).json({ erro: "O ID deve ser um número inteiro positivo" });
-    }
-
-    req.id = id;
-    next();
-}
-
-function tratarErro(erro, req, res, next) {
-    if (res.headersSent) return next(erro);
-
-    if (erro.type === "entity.parse.failed") {
-        return res.status(400).json({ erro: "JSON inválido no corpo da requisição" });
-    }
-
-    if (erro.code === "ER_DUP_ENTRY" || erro.errno === 1062) {
-        return res.status(409).json({ erro: "Este nickname já está em uso" });
-    }
-
-    // Cadastro/edição com uma chave estrangeira inexistente.
-    if (erro.code === "ER_NO_REFERENCED_ROW_2" || erro.errno === 1452) {
-        return res.status(400).json({ erro: "O estudio informado não existe" });
-    }
-
-    // Exclusão de um registro que ainda possui dependentes.
-    if (erro.code === "ER_ROW_IS_REFERENCED_2" || erro.errno === 1451) {
-        return res.status(409).json({
-            erro: "Este registro possui vínculos. Exclua primeiro os registros dependentes"
-        });
-    }
-
-    // Mantém erros HTTP de leitura do corpo, como limite de tamanho.
-    if (Number.isInteger(erro.status) && erro.status >= 400 && erro.status < 500) {
-        return res.status(erro.status).json({ erro: "Corpo da requisição inválido" });
-    }
-
-    console.error("Erro na API:", erro.code || erro.message);
-    return res.status(500).json({ erro: "Não foi possível concluir a operação" });
-}
 
 // #region estudios
 
@@ -209,9 +160,6 @@ app.delete("/jogos/:id", validarId, (req, res, next) => {
     });
 });
 
-// #endregion jogos
-// #region jogadores
-
 app.get("/jogadores", (req, res, next) => {
     conexao.query("SELECT * FROM jogadores ORDER BY id", (erro, resultado) => {
         if (erro) return next(erro);
@@ -305,4 +253,4 @@ conexao.connect((erro) => {
         console.error("Erro ao iniciar servidor:", erro.code || erro.message);
         conexao.end(() => process.exit(1));
     });
-})
+});
